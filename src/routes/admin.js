@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import supabase from '../services/supabase.js';
 import { runLastMinuteEngine } from '../services/lastMinute.js';
+import { ALL_CLUBS } from '../../scripts/seed-clubs.js';
 
 const router = Router();
 
@@ -199,6 +200,86 @@ router.post('/sm/run', async (req, res) => {
 // ── GET /api/admin/sm/log ────────────────────────────────────────
 router.get('/sm/log', (req, res) => {
   res.json(smLog.slice(0, 50));
+});
+
+// ── POST /api/admin/run-sm-engine (alias) ────────────────────────
+router.post('/run-sm-engine', async (req, res) => {
+  const start = Date.now();
+  try {
+    await runLastMinuteEngine();
+    const duration = ((Date.now() - start) / 1000).toFixed(1);
+    const entry = {
+      id: Date.now(),
+      timestamp: new Date().toISOString(),
+      status: 'success',
+      message: `SM-motor kördes manuellt – klar på ${duration}s`,
+    };
+    smLog.unshift(entry);
+    if (smLog.length > 50) smLog.pop();
+    res.json({ message: entry.message });
+  } catch (err) {
+    const entry = {
+      id: Date.now(),
+      timestamp: new Date().toISOString(),
+      status: 'error',
+      message: `SM-motor misslyckades: ${err.message}`,
+    };
+    smLog.unshift(entry);
+    if (smLog.length > 50) smLog.pop();
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/admin/seed-clubs ───────────────────────────────────
+// Kör seeden direkt via admin-API (en gång)
+router.post('/seed-clubs', async (req, res) => {
+  try {
+    const rows = ALL_CLUBS.map((c, i) => ({
+      slug: c.slug,
+      name: c.name,
+      area: c.area,
+      location: c.location,
+      gm_version: c.gm_version,
+      active: false,
+      has_last_minute: false,
+      rating: 0,
+      reviews: 0,
+      holes: 18,
+      par: 72,
+      difficulty: 'medium',
+      from_price: 0,
+      image: '',
+      lat: 0,
+      lng: 0,
+      sort_order: i + 1,
+    }));
+
+    const BATCH = 50;
+    let inserted = 0;
+    let skipped = 0;
+
+    for (let i = 0; i < rows.length; i += BATCH) {
+      const batch = rows.slice(i, i + BATCH);
+      const { data, error } = await supabase
+        .from('courses')
+        .upsert(batch, { onConflict: 'slug', ignoreDuplicates: true })
+        .select('slug');
+
+      if (error) throw error;
+      inserted += data?.length ?? 0;
+      skipped += batch.length - (data?.length ?? 0);
+    }
+
+    res.json({
+      message: `Seed klar: ${inserted} insatta, ${skipped} redan existerande`,
+      inserted,
+      skipped,
+      total: ALL_CLUBS.length,
+    });
+  } catch (err) {
+    console.error('[admin/seed-clubs]', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;
