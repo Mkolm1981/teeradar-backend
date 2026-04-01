@@ -9,6 +9,7 @@ import cors from 'cors';
 import courseRoutes  from './routes/courses.js';
 import bookingRoutes from './routes/bookings.js';
 import miscRoutes    from './routes/misc.js';
+import adminRoutes   from './routes/admin.js';
 import { scheduleSMEngine, runLastMinuteEngine } from './services/lastMinute.js';
 
 const app  = express();
@@ -36,6 +37,7 @@ app.use('/api', courseRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api', miscRoutes);
 app.use('/api/webhook', miscRoutes);
+app.use('/api/admin', adminRoutes);
 
 // ── Health check ─────────────────────────────────────────────────
 app.get('/health', (req, res) => {
