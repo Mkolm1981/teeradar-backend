@@ -4,9 +4,12 @@
 // ─────────────────────────────────────────────────────────────────
 
 import { Router } from 'express';
+import multer from 'multer';
 import supabase from '../services/supabase.js';
 import { runLastMinuteEngine } from '../services/lastMinute.js';
 import { ALL_CLUBS } from '../../scripts/seed-clubs.js';
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const router = Router();
 
@@ -141,7 +144,7 @@ router.put('/courses/:id', async (req, res) => {
   }
 
   const allowed = [
-    'name', 'description', 'image', 'active', 'gm_version',
+    'name', 'description', 'image', 'image_map', 'active', 'gm_version',
     'from_price', 'has_buggy', 'has_restaurant', 'has_pro_shop', 'has_driving_range',
   ];
   const updates = Object.fromEntries(
@@ -200,6 +203,43 @@ router.post('/sm/run', async (req, res) => {
 // ── GET /api/admin/sm/log ────────────────────────────────────────
 router.get('/sm/log', (req, res) => {
   res.json(smLog.slice(0, 50));
+});
+
+// ── POST /api/admin/upload ───────────────────────────────────────
+// Laddar upp bild till Supabase Storage, returnerar publik URL
+// type: 'image' (presentationsbild) eller 'map' (banakarta)
+router.post('/upload', upload.single('file'), async (req, res) => {
+  const file = req.file;
+  if (!file) return res.status(400).json({ error: 'Ingen fil uppladdad' });
+
+  const { slug, type } = req.body;
+  if (!slug || !['image', 'map'].includes(type)) {
+    return res.status(400).json({ error: 'slug och type (image|map) krävs' });
+  }
+
+  const ext = file.originalname.split('.').pop()?.toLowerCase() || 'jpg';
+  const bucket = 'course-images';
+  const path = `${slug}/${type}.${ext}`;
+
+  try {
+    const { error: uploadErr } = await supabase.storage
+      .from(bucket)
+      .upload(path, file.buffer, {
+        contentType: file.mimetype,
+        upsert: true,
+      });
+
+    if (uploadErr) throw uploadErr;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(path);
+
+    res.json({ url: publicUrl });
+  } catch (err) {
+    console.error('[admin/upload]', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── POST /api/admin/run-sm-engine (alias) ────────────────────────

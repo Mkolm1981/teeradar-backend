@@ -10,10 +10,11 @@ import axios from 'axios';
 function getV1Client(tenant) {
   const t = tenant || process.env.GOLFMANAGER_TENANT || 'demo';
   const key = process.env.GOLFMANAGER_API_KEY;
+  const username = process.env.GOLFMANAGER_USERNAME;
 
   const params = { tenant: t };
   const headers = {};
-  if (key) headers['Authorization'] = `Basic ${Buffer.from(`user:${key}`).toString('base64')}`;
+  if (username && key) headers['Authorization'] = `Basic ${Buffer.from(`${username}:${key}`).toString('base64')}`;
 
   return axios.create({
     baseURL: process.env.GOLFMANAGER_V1_BASE_URL,
