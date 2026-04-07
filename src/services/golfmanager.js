@@ -87,30 +87,35 @@ export async function searchAvailability({ tenant, date, idResource, slots = 2, 
     params: { start, end, idResource, slots },
   });
 
-  return (res.data || []).map(slot => {
-    // GolfManager returnerar "start" som ISO-sträng, t.ex. "2018-11-09T10:00:00"
-    const startStr  = slot.start || '';
-    const timePart  = startStr.length >= 16 ? startStr.slice(11, 16) : '';
-    const maxSlots  = slot.max || slot.maxSlots || 4;
-    const minSlots  = slot.min || slot.minSlots || 1;
-    return {
-      id:            slot.id || `${startStr}-${slot.idType}`,
-      time:          timePart,
-      startFull:     startStr,
-      idType:        slot.idType,
-      idResource:    slot.idResource || idResource,
-      price:         slot.price,
-      originalPrice: slot.price,
-      minSlots,
-      maxSlots,
-      spotsLeft:     maxSlots,
-      name:          slot.name || '',
-      tags:          slot.tags || [],
-      isLastMinute:  false,
-      tenant,
-      version,
-    };
-  });
+  // GolfManager returnerar: [{ date, slots, types: [{start, price, idType, max, min, ...}] }]
+  const results = [];
+  for (const slot of (res.data || [])) {
+    const types = slot.types || [];
+    for (const t of types) {
+      const startStr = t.start || slot.date || '';
+      const timePart = startStr.length >= 16 ? startStr.slice(11, 16) : '';
+      const maxSlots = t.max || 4;
+      const minSlots = t.min || 1;
+      results.push({
+        id:            t.id || t.idType || `${startStr}-${t.idType}`,
+        time:          timePart,
+        startFull:     startStr,
+        idType:        t.idType,
+        idResource:    t.idResource || idResource,
+        price:         t.price,
+        originalPrice: t.rack || t.price,
+        minSlots,
+        maxSlots,
+        spotsLeft:     slot.slots || maxSlots,
+        name:          t.name || '',
+        tags:          t.tags || [],
+        isLastMinute:  false,
+        tenant,
+        version,
+      });
+    }
+  }
+  return results;
 }
 
 export async function searchMultipleCourses(courseConfigs, date, slots) {
