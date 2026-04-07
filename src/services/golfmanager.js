@@ -188,4 +188,4 @@ export function handleGolfManagerError(err) {
   if (err.code === 'ECONNABORTED') return { code: 'TIMEOUT',  message: 'GolfManager svarar inte' };
   if (err.code === 'ENOTFOUND')    return { code: 'NETWORK',  message: 'Kan inte nå GolfManager' };
   return { code: 'UNKNOWN', message: err.message };
-}
+} 
