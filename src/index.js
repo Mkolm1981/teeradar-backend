@@ -1,7 +1,4 @@
-// ─────────────────────────────────────────────────────────────────
-// TeeRadar – Backend Server
-// ─────────────────────────────────────────────────────────────────
-
+// src/index.js (uppdaterad – lägger till admin-routes)
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -16,11 +13,8 @@ const app  = express();
 const PORT = process.env.PORT || 3001;
 
 // ── Middleware ───────────────────────────────────────────────────
-
-// Raw body för Stripe webhook (måste vara före json-parsern)
 app.use('/api/webhook/stripe', express.raw({ type: 'application/json' }));
 
-// CORS – tillåt teeradar.se och localhost
 app.use(cors({
   origin: [
     'http://localhost:5173',
@@ -54,12 +48,10 @@ app.listen(PORT, () => {
   console.log(`\n🚀 TeeRadar Backend startar på port ${PORT}`);
   console.log(`   ENV:    ${process.env.NODE_ENV}`);
   console.log(`   Tenant: ${process.env.GOLFMANAGER_TENANT || 'demo'}`);
-  console.log(`   CORS:   teeradar.se + localhost:5173\n`);
+  console.log(`   Admin:  /api/admin/* (lösenordsskyddad)\n`);
 
-  // Starta sista-minuten-motor (kl 20:00 varje kväll)
   scheduleSMEngine();
 
-  // I dev-läge: kör SM-motorn direkt vid start för att testa
   if (process.env.NODE_ENV === 'development' && process.env.RUN_SM_ON_START === 'true') {
     console.log('🧪 [Dev] Kör SM-motor direkt...');
     runLastMinuteEngine();
