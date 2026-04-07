@@ -210,11 +210,11 @@ router.get('/kickback-report', async (req, res) => {
     if (error) throw error;
 
     // Gruppera per hemmaklubb
-    const byClub: Record<string, { bookings: unknown[]; total_greenfee: number; our_margin: number; kickback: number }> = {};
+    const byClub = {};
     const MARGIN = 0.20;
     const KICKBACK_PCT = Number(process.env.KICKBACK_DEFAULT_PERCENT || 30) / 100;
 
-    (bookings || []).forEach((b: { home_club?: string; display_price?: number; players?: number }) => {
+    (bookings || []).forEach((b) => {
       if (!b.home_club) return;
       if (!byClub[b.home_club]) byClub[b.home_club] = { bookings: [], total_greenfee: 0, our_margin: 0, kickback: 0 };
       const greenfee = (b.display_price || 0) * (b.players || 1);
