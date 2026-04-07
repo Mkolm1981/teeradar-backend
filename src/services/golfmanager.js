@@ -87,21 +87,30 @@ export async function searchAvailability({ tenant, date, idResource, slots = 2, 
     params: { start, end, idResource, slots },
   });
 
-  return (res.data || []).map(slot => ({
-    id:            slot.id,
-    time:          slot.start?.slice(11, 16) || '',
-    startFull:     slot.start,
-    idType:        slot.idType,
-    idResource:    slot.idResource || idResource,
-    price:         slot.price,
-    originalPrice: slot.price,
-    minSlots:      slot.minSlots || 1,
-    maxSlots:      slot.maxSlots || 4,
-    spotsLeft:     slot.maxSlots || 4,
-    isLastMinute:  false,
-    tenant,
-    version,
-  }));
+  return (res.data || []).map(slot => {
+    // GolfManager returnerar "start" som ISO-sträng, t.ex. "2018-11-09T10:00:00"
+    const startStr  = slot.start || '';
+    const timePart  = startStr.length >= 16 ? startStr.slice(11, 16) : '';
+    const maxSlots  = slot.max || slot.maxSlots || 4;
+    const minSlots  = slot.min || slot.minSlots || 1;
+    return {
+      id:            slot.id || `${startStr}-${slot.idType}`,
+      time:          timePart,
+      startFull:     startStr,
+      idType:        slot.idType,
+      idResource:    slot.idResource || idResource,
+      price:         slot.price,
+      originalPrice: slot.price,
+      minSlots,
+      maxSlots,
+      spotsLeft:     maxSlots,
+      name:          slot.name || '',
+      tags:          slot.tags || [],
+      isLastMinute:  false,
+      tenant,
+      version,
+    };
+  });
 }
 
 export async function searchMultipleCourses(courseConfigs, date, slots) {
@@ -188,4 +197,4 @@ export function handleGolfManagerError(err) {
   if (err.code === 'ECONNABORTED') return { code: 'TIMEOUT',  message: 'GolfManager svarar inte' };
   if (err.code === 'ENOTFOUND')    return { code: 'NETWORK',  message: 'Kan inte nå GolfManager' };
   return { code: 'UNKNOWN', message: err.message };
-} 
+}
